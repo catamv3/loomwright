@@ -8,6 +8,8 @@ A browser-based, Mac-friendly design studio for machine knitters, organised in t
 4. **Interactive Knitting** – row-by-row progress with needle positions (L/R numbering), shaping instructions, voice/beep alerts for yarn changes, shaping, markers and technique changes, a needle-bed strip for the current row, and an optional USB-serial machine link (Web Serial, Chrome/Edge). Print full instructions or export chart PNGs.
 5. **Graphics Studio** – drop, paste or open any image; set stitches/rows, number of yarn colours and max colours per row; pick yarn colours from the image or choose any shade; optional dithering; send the result to Stitch Designer.
 
+On iPhone and small screens: toolbars wrap, charts fit the screen width with − / Fit / + zoom buttons, pinch-zoom works in Pattern Drafting, and Interactive Knitting has a large Next row bar at the bottom of the screen. Add it to your Home Screen from Safari for a full-screen app.
+
 Mac touches: ⌘1–5 switch sections (in the installed app), ⌘S / ⌘O save and open project files, ⌘Z / ⇧⌘Z undo/redo, ⌘P prints, trackpad pinch-to-zoom, light/dark mode, and it installs to the Dock from Safari (File → Add to Dock) or Chrome (Install app). Work autosaves in the browser.
 
 ## Run locally
