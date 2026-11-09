@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Piece, activePiece, setState, updatePiece, useStore } from '../store';
 import { KnitRow, cellAt, knitPlan, needleLabel, pieceRows, renderPieceCanvas, spanCount, spanLabel } from '../lib/knit';
 import { downloadBlob } from '../lib/image';
-import { NumField, Seg, toast, CMD } from '../components/ui';
+import { NumField, Seg, toast, CMD, useWidth, ZoomControls } from '../components/ui';
 
 const SWATCH_ID = '__swatch__';
 
@@ -77,7 +77,11 @@ export default function InteractiveKnitting() {
   // Chart canvas
   const chartRef = useRef<HTMLCanvasElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const cellW = Math.max(3, Math.min(10, Math.floor(620 / Math.max(1, geo.width + 2))));
+  const [zoom, setZoom] = useState(1);
+  const fitW = useWidth(scrollRef) - 2;
+  // 1 = fit the whole piece across the screen; zoom multiplies that
+  const fitCell = Math.min(10, fitW / Math.max(1, geo.width + 2));
+  const cellW = Math.max(0.5, fitCell * zoom);
   const cellH = cellW * (s.gauge.sts / s.gauge.rows);
   useEffect(() => {
     const cv = chartRef.current;
@@ -103,7 +107,8 @@ export default function InteractiveKnitting() {
     const sc = scrollRef.current;
     if (sc) {
       const top = cv.offsetTop + yCur - sc.clientHeight / 2;
-      sc.scrollTo({ top, behavior: 'smooth' });
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      sc.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
     }
   }, [piece, s.gauge, s.pattern, row, cellW, cellH]);
 
@@ -167,6 +172,7 @@ export default function InteractiveKnitting() {
   }, [cur, geo, s.pattern, piece, row, s.gauge.rows]);
 
   const total = cur ? cur.spans.reduce((t, sp) => t + spanCount(sp), 0) : 0;
+  const labelStep = [10, 20, 30, 50, 100].find((st) => st * cellW >= 30) ?? 100;
   const upcoming = plan.slice(row + 1, row + 40).filter((r) => r.alerts.length).slice(0, 5);
 
   return (
@@ -188,26 +194,40 @@ export default function InteractiveKnitting() {
         <button className="btn" onClick={() => window.print()} title={`${CMD}P`}>Print instructions</button>
       </div>
       <div className="content">
-        <div className="stage" ref={scrollRef} style={{ padding: 24 }}>
-          <div className="card" style={{ padding: 12, marginBottom: 16, overflowX: 'auto', position: 'sticky', top: 0, left: 0, zIndex: 2 }}>
-            <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>NEEDLE BED — ROW {cur?.row}</div>
-            <div style={{ display: 'flex', gap: 1, minWidth: 'max-content' }}>
-              {bedCells.map((c) => (
-                <div key={c.n} title={needleLabel(c.n)} style={{ width: Math.max(6, cellW), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <div style={{ width: '100%', height: 26, borderRadius: 2, background: c.color ?? 'transparent', border: c.color ? '1px solid rgba(0,0,0,.15)' : '1px dashed var(--line-strong)', position: 'relative' }}>
-                    {c.st ? <span style={{ position: 'absolute', inset: 0, fontSize: 9, textAlign: 'center', lineHeight: '26px' }}>{'·-TS\\/o'[c.st]}</span> : null}
-                  </div>
-                  {(c.n < 0 ? -c.n : c.n + 1) % 10 === 0 ? <span style={{ fontSize: 9, color: c.n < 0 ? '#d9822b' : '#2b9d55' }}>{needleLabel(c.n)}</span> : c.n === 0 ? <span style={{ fontSize: 9, color: 'var(--muted)' }}>|</span> : null}
-                </div>
-              ))}
-            </div>
+        <div className="stage knit-stage">
+          <div className="knit-chart-bar">
+            <span className="muted">{piece.name} · {geo.width} needles · {plan.length} rows</span>
+            <ZoomControls zoom={zoom} setZoom={setZoom} min={0.5} max={8} />
           </div>
-          <canvas ref={chartRef} style={{ display: 'block', imageRendering: 'pixelated', boxShadow: 'var(--shadow)', cursor: 'pointer' }}
-            onClick={(e) => {
-              const r = (e.target as HTMLCanvasElement).getBoundingClientRect();
-              setRow(plan.length - 1 - Math.floor((e.clientY - r.top) / cellH));
-            }} />
-          <p className="hint">Click a row on the chart to jump to it.</p>
+          <div className="chart-scroll" ref={scrollRef}>
+            <div className="bed" style={{ width: (geo.width + 2) * cellW }}>
+              <div className="bed-title">Needle bed · row {cur?.row}</div>
+              <div className="bed-cells" style={{ paddingLeft: cellW }}>
+                {bedCells.map((c) => (
+                  <div key={c.n} title={needleLabel(c.n)} className="bed-cell"
+                    style={{ width: cellW, background: c.color ?? 'transparent', borderRight: cellW >= 5 ? '1px solid rgba(0,0,0,.12)' : undefined, opacity: c.color ? 1 : 0.25 }}>
+                    {c.st && cellW >= 8 ? <span>{'·-TS\\/o'[c.st]}</span> : null}
+                  </div>
+                ))}
+              </div>
+              <div className="bed-labels" style={{ height: 14 }}>
+                {bedCells.filter((c) => {
+                  const k = c.n < 0 ? -c.n : c.n + 1;
+                  return k % labelStep === 0;
+                }).map((c) => (
+                  <span key={c.n} style={{ left: (c.n - geo.leftNeedle + 1.5) * cellW, color: c.n < 0 ? '#d9822b' : '#2b9d55' }}>{needleLabel(c.n)}</span>
+                ))}
+                <span style={{ left: (-geo.leftNeedle + 1) * cellW, color: 'var(--muted)' }}>|</span>
+              </div>
+            </div>
+            <canvas ref={chartRef} style={{ display: 'block', imageRendering: 'pixelated', cursor: 'pointer' }}
+              onClick={(e) => {
+                const r = (e.target as HTMLCanvasElement).getBoundingClientRect();
+                setRow(plan.length - 1 - Math.floor((e.clientY - r.top) / cellH));
+              }} />
+            <div className="chart-tail" aria-hidden="true" />
+          </div>
+          <p className="hint">Tap a row on the chart to jump to it.</p>
         </div>
         <aside className="inspector">
           {target === SWATCH_ID && (
@@ -229,7 +249,7 @@ export default function InteractiveKnitting() {
               <button className="btn" onClick={() => setRow(row - 1)}>◀ Back</button>
               <button className="btn primary" onClick={() => setRow(row + 1)}>Next row ▶</button>
             </div>
-            <div className="hint">Space or → advances · ← goes back</div>
+            <div className="hint keys-hint">Space or → advances · ← goes back</div>
           </div>
           {cur && (
             <div className="group">
@@ -261,6 +281,14 @@ export default function InteractiveKnitting() {
             <p className="hint" style={{ margin: 0 }}>Works with any USB-serial carriage counter or cable link that sends a signal on each pass (Chrome/Edge on macOS). Without one, use the keyboard or a Bluetooth page-turner pedal mapped to Space.</p>
           </div>
         </aside>
+      </div>
+      <div className="knit-dock" role="toolbar" aria-label="Row controls">
+        <button className="btn dock-back" onClick={() => setRow(row - 1)} aria-label="Previous row">◀</button>
+        <div className="dock-info">
+          <b>Row {cur?.row ?? 0}<span className="muted"> / {plan.length}</span></b>
+          <small>{cur?.alerts[0] ?? `${cur?.spans.map(spanLabel).join(' + ') ?? ''} · ${cur?.technique ?? ''}`}</small>
+        </div>
+        <button className="btn primary dock-next" onClick={() => setRow(row + 1)} disabled={row >= plan.length - 1}>Next row ▶</button>
       </div>
     </>
   );

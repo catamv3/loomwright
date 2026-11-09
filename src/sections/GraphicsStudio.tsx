@@ -68,7 +68,7 @@ export default function GraphicsStudio() {
     const ch = cw * (s.gauge.sts / s.gauge.rows);
     const dpr = window.devicePixelRatio || 1;
     cv.width = result.w * cw * dpr; cv.height = result.h * ch * dpr;
-    cv.style.width = `${result.w * cw}px`; cv.style.height = `${result.w * cw * ar}px`;
+    cv.style.width = `${result.w * cw}px`; cv.style.height = 'auto'; cv.style.maxWidth = '100%'; void ar;
     const ctx = cv.getContext('2d')!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     for (let y = 0; y < result.h; y++) for (let x = 0; x < result.w; x++) {
@@ -116,7 +116,7 @@ export default function GraphicsStudio() {
     <>
       <div className="toolbar">
         <h1>Graphics Studio</h1>
-        <span className="muted">Turn photos, scans and artwork into knittable stitch patterns.</span>
+        <span className="muted tb-sub">Turn photos, scans and artwork into knittable stitch patterns.</span>
         <div className="spacer" />
         <label className="btn">Open image…<input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && load(e.target.files[0])} /></label>
         <button className="btn primary" disabled={!result} onClick={send}>Send to Stitch Designer →</button>
@@ -129,18 +129,18 @@ export default function GraphicsStudio() {
             <div className={`drop ${over ? 'over' : ''}`}>
               <div style={{ fontSize: 34, marginBottom: 8 }}>🖼</div>
               <b>Drop an image here</b>
-              <div>or paste with ⌘V, or use Open image…</div>
+              <div>or paste with ⌘V, or use Open image… <span className="phone-only">(on iPhone: tap Open image to choose a photo)</span></div>
               <div className="hint" style={{ marginTop: 8 }}>PNG, JPEG, HEIC (Safari), GIF, WebP, screenshots</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <div className="card" style={{ padding: 12 }}>
+            <div className="gs-pair" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div className="card" style={{ padding: 12, maxWidth: '100%', minWidth: 0 }}>
                 <div className="muted" style={{ marginBottom: 6 }}>Original {picking !== null && <b style={{ color: 'var(--accent)' }}>— click to pick colour {picking + 1}</b>}</div>
                 <canvas ref={srcRef} onClick={pickFrom} style={{ display: 'block', cursor: picking !== null ? 'crosshair' : 'default', maxWidth: '100%' }} />
               </div>
-              <div className="card" style={{ padding: 12 }}>
+              <div className="card" style={{ padding: 12, maxWidth: '100%', minWidth: 0 }}>
                 <div className="muted" style={{ marginBottom: 6 }}>Knitted preview · {sts} sts × {rows} rows · {(sts / s.gauge.sts * 10).toFixed(1)} × {(rows / s.gauge.rows * 10).toFixed(1)} cm</div>
-                <canvas ref={previewRef} style={{ display: 'block' }} />
+                <canvas ref={previewRef} style={{ display: 'block', maxWidth: '100%' }} />
               </div>
             </div>
           )}

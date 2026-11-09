@@ -208,12 +208,22 @@ export default function StitchDesigner() {
 
   // pinch zoom
   const stageRef = useRef<HTMLDivElement>(null);
+  const fitCell = () => {
+    const el = stageRef.current;
+    const avail = (el?.clientWidth ?? 640) - 48;
+    setCell(Math.max(2, Math.min(48, avail / (p.w * rep.x))));
+  };
+  useEffect(() => {
+    // phones start zoomed to fit the screen
+    if (window.matchMedia?.('(max-width: 860px)').matches) fitCell();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const el = stageRef.current;
     const h = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
-      setCell((c) => Math.max(3, Math.min(48, c * Math.exp(-e.deltaY * 0.01))));
+      setCell((c) => Math.max(2, Math.min(48, c * Math.exp(-e.deltaY * 0.01))));
     };
     el?.addEventListener('wheel', h, { passive: false });
     return () => el?.removeEventListener('wheel', h);
@@ -222,8 +232,8 @@ export default function StitchDesigner() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches('input, textarea, select') || e.metaKey || e.ctrlKey) {
-        if ((e.metaKey || e.ctrlKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setCell((c) => Math.min(48, c + 3)); }
-        if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); setCell((c) => Math.max(3, c - 3)); }
+        if ((e.metaKey || e.ctrlKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setCell((c) => Math.min(48, c * 1.3)); }
+        if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); setCell((c) => Math.max(2, c / 1.3)); }
         return;
       }
       const map: Record<string, Tool> = { b: 'pencil', l: 'line', r: 'rect', R: 'frect', f: 'fill', i: 'picker', e: 'eraser' };
@@ -276,8 +286,11 @@ export default function StitchDesigner() {
             <div className="sep" />
             <button className={`btn ${texture ? 'on' : ''}`} onClick={() => setTexture(!texture)}>Fabric view</button>
             <button className={`btn ${trueTension ? 'on' : ''}`} onClick={() => setTrueTension(!trueTension)} title="Show stitches at true tension proportions">True tension</button>
-            <button className="btn icon" onClick={() => setCell((c) => Math.max(3, c - 3))} title={`Zoom out (${CMD}−)`}>−</button>
-            <button className="btn icon" onClick={() => setCell((c) => Math.min(48, c + 3))} title={`Zoom in (${CMD}+)`}>+</button>
+            <div className="zoom-controls" role="group" aria-label="Zoom">
+            <button className="btn icon" aria-label="Zoom out" onClick={() => setCell((c) => Math.max(2, c / 1.3))} title={`Zoom out (${CMD}−)`}>−</button>
+            <button className="btn" onClick={fitCell} title="Fit repeats to the screen">Fit</button>
+            <button className="btn icon" aria-label="Zoom in" onClick={() => setCell((c) => Math.min(48, c * 1.3))} title={`Zoom in (${CMD}+)`}>+</button>
+            </div>
           </>
         )}
         <div className="spacer" />
@@ -285,9 +298,11 @@ export default function StitchDesigner() {
       </div>
       <div className="content">
         {tab === 'design' ? (
-          <div className="stage" ref={stageRef} style={{ padding: 24 }}>
-            <canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-              style={{ display: 'block', boxShadow: 'var(--shadow)', touchAction: 'none', cursor: 'crosshair', imageRendering: 'pixelated' }} />
+          <div className="stage stitch-stage" ref={stageRef} style={{ padding: 24 }}>
+            <div className="canvas-scroll">
+              <canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+                style={{ display: 'block', boxShadow: 'var(--shadow)', touchAction: 'none', cursor: 'crosshair', imageRendering: 'pixelated' }} />
+            </div>
             <p className="hint">Repeat {p.w} sts × {p.h} rows · orange box is the repeat you edit, grey tiles show how it repeats · row 1 is at the bottom</p>
           </div>
         ) : (

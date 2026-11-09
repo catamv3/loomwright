@@ -41,7 +41,12 @@ export default function PatternDrafting() {
   const [snap, setSnap] = useState(true);
   const [showPattern, setShowPattern] = useState(false);
   const [showDims, setShowDims] = useState(true);
-  const drag = useRef<{ i: number; partner: number | null; mode: 'point' } | { mode: 'pan'; sx: number; sy: number; vb: VB } | null>(null);
+  const drag = useRef<{ i: number; partner: number | null; mode: 'point' } | { mode: 'pan'; sx: number; sy: number; vb: VB } | { mode: 'pinch'; d0: number; vb: VB; c: Pt } | null>(null);
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const zoomBy = (f: number) => setVb((v) => {
+    const w = Math.min(600, Math.max(5, v.w * f)), h = w * (v.h / v.w);
+    return { x: v.x + (v.w - w) / 2, y: v.y + (v.h - h) / 2, w, h };
+  });
   const patUrl = useMemo(() => patternDataUrl(s.pattern), [s.pattern]);
 
   const aspect = () => {
@@ -79,8 +84,17 @@ export default function PatternDrafting() {
   };
 
   const onMove = (e: React.PointerEvent) => {
+    if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const d = drag.current;
     if (!d) return;
+    if (d.mode === 'pinch') {
+      const [a, b] = [...touches.current.values()];
+      if (!a || !b) return;
+      const f = d.d0 / Math.max(10, Math.hypot(a.x - b.x, a.y - b.y));
+      const w = Math.min(600, Math.max(5, d.vb.w * f)), h = w * (d.vb.h / d.vb.w);
+      setVb({ x: d.c.x - (d.c.x - d.vb.x) * (w / d.vb.w), y: d.c.y - (d.c.y - d.vb.y) * (h / d.vb.h), w, h });
+      return;
+    }
     if (d.mode === 'pan') {
       const r = svgRef.current!.getBoundingClientRect();
       const k = d.vb.w / r.width;
@@ -95,11 +109,21 @@ export default function PatternDrafting() {
     if (d.partner !== null) pts[d.partner] = { x: -pts[d.i].x, y: pts[d.i].y };
     updatePiece(piece.id, { points: pts });
   };
-  const onUp = () => { drag.current = null; };
+  const onUp = (e?: React.PointerEvent) => {
+    if (e) touches.current.delete(e.pointerId);
+    drag.current = null;
+  };
 
   const onBgDown = (e: React.PointerEvent) => {
     setSel(null);
     (e.target as Element).setPointerCapture?.(e.pointerId);
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.current.size >= 2) {
+      // two-finger pinch to zoom (touch screens)
+      const [a, b] = [...touches.current.values()];
+      drag.current = { mode: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), vb, c: toCm({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }) };
+      return;
+    }
     drag.current = { mode: 'pan', sx: e.clientX, sy: e.clientY, vb };
   };
 
@@ -223,13 +247,17 @@ export default function PatternDrafting() {
         <button className={`btn ${showDims ? 'on' : ''}`} onClick={() => setShowDims(!showDims)}>Measurements</button>
         <button className={`btn ${showPattern ? 'on' : ''}`} onClick={() => setShowPattern(!showPattern)}>Show stitch pattern</button>
         <div className="sep" />
-        <button className="btn" onClick={() => setVb(fit(piece, aspect()))}>Fit</button>
-        <span className="hint" title="Drag points to reshape · double-click an edge to add a point · ⌫ deletes the selected point · arrow keys nudge (⇧ for 1 cm) · pinch or ⌘-scroll to zoom · drag the background to pan">Drag points · double-click edge to add · ⌫ delete</span>
+        <div className="zoom-controls" role="group" aria-label="Zoom">
+          <button className="btn icon" aria-label="Zoom out" onClick={() => zoomBy(1.4)}>−</button>
+          <button className="btn" onClick={() => setVb(fit(piece, aspect()))}>Fit</button>
+          <button className="btn icon" aria-label="Zoom in" onClick={() => zoomBy(1 / 1.4)}>+</button>
+        </div>
+        <span className="hint tb-sub" title="Drag points to reshape · double-click an edge to add a point · ⌫ deletes the selected point · arrow keys nudge (⇧ for 1 cm) · pinch or ⌘-scroll to zoom · drag the background to pan">Drag points · double-click edge to add · ⌫ delete</span>
         <div className="spacer" />
         <button className="btn primary" onClick={() => setState({ section: 'stitch' })}>Add stitch pattern →</button>
       </div>
       <div className="content">
-        <div className="stage" style={{ overflow: 'hidden' }}>
+        <div className="stage draft-stage" style={{ overflow: 'hidden' }}>
           <svg
             ref={svgRef}
             viewBox={`${vb.x} ${-(vb.y + vb.h)} ${vb.w} ${vb.h}`}
