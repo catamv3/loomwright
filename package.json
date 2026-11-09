@@ -1,0 +1,22 @@
+{
+  "name": "loomwright",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mac-friendly machine-knitting design studio (garment styling, pattern drafting, stitch design, interactive knitting, graphics studio).",
+  "type": "module",
+  "scripts": {
+    "dev": "node build.mjs --serve",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0"
+  }
+}
