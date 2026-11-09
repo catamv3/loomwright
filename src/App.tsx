@@ -27,12 +27,12 @@ const SECTIONS: { key: Section; label: string }[] = [
 
 async function saveProject() {
   const s = getState();
-  const json = JSON.stringify({ ...s, app: 'loomwright', version: 1 }, null, 1);
-  const name = `${s.name.replace(/[^\w\- ]+/g, '').trim() || 'project'}.loomwright.json`;
+  const json = JSON.stringify({ ...s, app: 'knitbus3000', version: 1 }, null, 1);
+  const name = `${s.name.replace(/[^\w\- ]+/g, '').trim() || 'project'}.knitbus3000.json`;
   const w = window as any;
   if (w.showSaveFilePicker) {
     try {
-      const h = await w.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Loomwright project', accept: { 'application/json': ['.json'] } }] });
+      const h = await w.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Knitbus3000 project', accept: { 'application/json': ['.json'] } }] });
       const wr = await h.createWritable();
       await wr.write(json); await wr.close();
       toast('Project saved');
@@ -80,6 +80,7 @@ function PrintView() {
 export default function App() {
   const s = useStore();
   const [confirmNew, setConfirmNew] = useState(false);
+  const [projectOpen, setProjectOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -100,17 +101,20 @@ export default function App() {
   return (
     <>
       <div className="app">
-        <aside className="sidebar">
+        <aside className={`sidebar ${projectOpen ? 'project-open' : ''}`}>
           <div className="brand">
             <img src="icon.svg" alt="" />
-            <div><b>Loomwright</b><small>Machine knit studio</small></div>
+            <div><b>Knitbus3000</b><small>Machine knit studio</small></div>
           </div>
           <div className="side-label">Workflow</div>
           {SECTIONS.map((sec, i) => (
-            <button key={sec.key} className={`nav-item ${s.section === sec.key ? 'active' : ''}`} onClick={() => setState({ section: sec.key })} title={`${CMD}${i + 1}`}>
+            <button key={sec.key} className={`nav-item ${s.section === sec.key ? 'active' : ''}`} onClick={() => { setState({ section: sec.key }); setProjectOpen(false); }} title={`${CMD}${i + 1}`}>
               {ICONS[sec.key]}{sec.label}<span className="num">{CMD}{i + 1}</span>
             </button>
           ))}
+          <button className={`nav-item project-toggle ${projectOpen ? 'active' : ''}`} onClick={() => setProjectOpen(!projectOpen)} aria-expanded={projectOpen}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 4.5h12M2 8h12M2 11.5h12" /></svg>Project
+          </button>
           <div className="side-box">
             <div className="field wide"><label>Project</label>
               <input type="text" value={s.name} onChange={(e) => setState({ name: e.target.value })} />
