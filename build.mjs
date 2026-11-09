@@ -23,7 +23,7 @@ if (serve) {
   const ctx = await esbuild.context(opts);
   await ctx.watch();
   const { port } = await ctx.serve({ servedir: 'dist', port: 5173 });
-  console.log(`Loomwright running at http://localhost:${port}`);
+  console.log(`Knitbus3000 running at http://localhost:${port}`);
 } else {
   await esbuild.build(opts);
   console.log('Built to dist/');
