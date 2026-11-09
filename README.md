@@ -1,4 +1,4 @@
-# Loomwright — machine knit studio for Mac
+# Knitbus3000 — machine knit studio for Mac
 
 A browser-based, Mac-friendly design studio for machine knitters, organised in the same five-step workflow as classic machine-knitting design software:
 
