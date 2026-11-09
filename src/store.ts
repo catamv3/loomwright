@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { GarmentSpec, defaultGarment, generateGarment } from './lib/garment';
+import { GarmentSpec, defaultGarment, fullMeas, generateGarment } from './lib/garment';
 
 export type Pt = { x: number; y: number };
 export type Piece = {
@@ -9,6 +9,7 @@ export type Piece = {
   offset: { x: number; y: number }; // pattern offset in stitches / rows
   markers: number[]; // row numbers with markers
   ribRows?: number;
+  role?: string; // garment piece type from Garment Styling (back, front, sleeve)
 };
 export type Pattern = {
   w: number;
@@ -67,17 +68,24 @@ function initial(): State {
   };
 }
 
-const KEY = 'loomwright.project.v1';
+const KEY = 'knitbus3000.project.v1';
+const OLD_KEY = 'loomwright.project.v1'; // keeps work saved under the app's previous name
 function load(): State | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as State;
     if (!s.pieces || !s.pattern) return null;
-    return { ...initial(), ...s };
+    return normalize({ ...initial(), ...s });
   } catch {
     return null;
   }
+}
+
+/** Upgrades projects saved by earlier versions (adds dress measurements, shaping points). */
+function normalize(s: State): State {
+  const g = s.garment ?? defaultGarment();
+  return { ...s, garment: { ...defaultGarment(), ...g, meas: fullMeas(g.meas ?? defaultGarment().meas), custom: g.custom ?? {} } };
 }
 
 let state: State = load() ?? initial();
@@ -133,9 +141,9 @@ export function newProject() {
 }
 export function loadProject(json: string) {
   const s = JSON.parse(json);
-  if (!s.pieces || !s.pattern || !s.gauge) throw new Error('Not a Loomwright project file');
+  if (!s.pieces || !s.pattern || !s.gauge) throw new Error('Not a Knitbus3000 project file');
   past.length = 0; future.length = 0;
-  state = { ...initial(), ...s, section: state.section };
+  state = normalize({ ...initial(), ...s, section: state.section });
   emit();
 }
 
