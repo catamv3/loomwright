@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 
 export function NumField({ label, value, onChange, step = 1, min, max, suffix }: {
   label: ReactNode; value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; suffix?: string;
@@ -63,4 +63,29 @@ export function pickFile(accept: string): Promise<File | null> {
     i.onchange = () => res(i.files?.[0] ?? null);
     i.click();
   });
+}
+
+/** Live content-box width of an element (for fitting charts to the screen). */
+export function useWidth(ref: React.RefObject<HTMLElement | null>, fallback = 600) {
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setW(el.clientWidth || fallback);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, fallback]);
+  return w;
+}
+
+export function ZoomControls({ zoom, setZoom, min = 0.5, max = 6, label = true }: { zoom: number; setZoom: (z: number) => void; min?: number; max?: number; label?: boolean }) {
+  return (
+    <div className="zoom-controls" role="group" aria-label="Zoom">
+      <button className="btn icon" aria-label="Zoom out" onClick={() => setZoom(Math.max(min, +(zoom / 1.4).toFixed(3)))}>−</button>
+      <button className="btn" onClick={() => setZoom(1)} title="Fit to screen">{label ? (zoom === 1 ? 'Fit' : `${Math.round(zoom * 100)}%`) : 'Fit'}</button>
+      <button className="btn icon" aria-label="Zoom in" onClick={() => setZoom(Math.min(max, +(zoom * 1.4).toFixed(3)))}>+</button>
+    </div>
+  );
 }
